@@ -4,14 +4,25 @@ function enkf(ensemble, observation, obsFunction, obsError) {
     'use strict';
     // very inefficient for large numbers of observations
     // need a better numeric library for a better implementation
+    var debug = false;
     var nm = enkf.numeric;
     var e = ensemble;
     var N = enkf.nens(e);
     var m = enkf.nvar(observation);
 
+    function pp(n,a) {
+        if (!debug) {return;}
+        console.log(n);
+        console.log(nm.prettyPrint(a));
+    }
+
     var HX = obsFunction(e); //synthetic data
     var P = nm.add(enkf.cov(HX),nm.diag(obsError[0])); // HQH^T + R
     var D = [], i, j;
+    
+    pp('HX', HX);
+    pp('P', P);
+
     for (i = 0; i < N; i++) {
         D.push([]);
         for (j = 0; j < m; j++) {
@@ -19,9 +30,13 @@ function enkf(ensemble, observation, obsFunction, obsError) {
         }
     } // perturbed data
     D = nm.sub(D,HX); // innovation
+
+    pp('D', D);
     
     var AHA = enkf.cov(e,HX);
-    var K = nm.dot(nm.inv(P),AHA); // kalman gain
+    pp('AHA', AHA);
+    var K = nm.dot(nm.inv(P),nm.transpose(AHA)); // kalman gain
+    pp('K', K);
     return nm.add(e,nm.dot(D,K));
 
 }
@@ -46,7 +61,7 @@ function enkf(ensemble, observation, obsFunction, obsError) {
 
     var cached = NaN;
     enkf.normRand = function (mu, sigma) {
-        sigma = sigma || 1.0;
+        sigma = sigma === undefined ? 1.0 : sigma;
         mu = mu || 0.0;
         var z = cached;
         var a, b;
