@@ -10,7 +10,7 @@ function enkf(ensemble, observation, obsFunction, obsError) {
     var m = enkf.nvar(observation);
 
     var HX = obsFunction(e); //synthetic data
-    var P = nm.add(enkf.cov(HX),nm.diag(obsError)); // HQH^T + R
+    var P = nm.add(enkf.cov(HX),nm.diag(obsError[0])); // HQH^T + R
     var D = [], i, j;
     for (i = 0; i < N; i++) {
         D.push([]);
@@ -21,16 +21,16 @@ function enkf(ensemble, observation, obsFunction, obsError) {
     D = nm.sub(D,HX); // innovation
     
     var AHA = enkf.cov(e,HX);
-    var K = nm.mul(AHA,nm.inv(P)); // kalman gain
-    return nm.add(e,nm.mul(K,D));
+    var K = nm.dot(nm.inv(P),AHA); // kalman gain
+    return nm.add(e,nm.dot(D,K));
 
 }
 
 (function () {
     'use strict';
 
+    if (typeof numeric === 'undefined') { enkf.numeric = require('numeric'); }
     enkf.numeric = numeric;
-    if (numeric === undefined) { enkf.numeric = require('numeric'); }
     var nm = enkf.numeric;
     
     function ones(n, m) {
@@ -64,7 +64,7 @@ function enkf(ensemble, observation, obsFunction, obsError) {
         var i, j, o = [];
         for (i = 0; i < n; i++) {
             o.push([]);
-            for(j = 0; j < m; m++) {
+            for(j = 0; j < m; j++) {
                 o[i].push(enkf.normRand(mu, sigma));
             }
         }
@@ -105,11 +105,11 @@ function enkf(ensemble, observation, obsFunction, obsError) {
         } else {
             A2 = enkf.submean(s);
         }
-        return nm.mul(nm.dot(A1,nm.transpose(A2)),1.0/(N-1));
+        return nm.mul(nm.dot(nm.transpose(A1),A2),1.0/(N-1));
     };
 
     enkf.obsFunction = function (iv) {
-        if (iv === undefined) { return function (e) { return nm.rep(e); }; }
+        if (iv === undefined) { return function (e) { return e; }; }
         if (!Array.isArray(iv)) { iv = [iv]; }
         return function (e) {
             var i, j, h = [];
@@ -127,4 +127,4 @@ function enkf(ensemble, observation, obsFunction, obsError) {
 
 
 
-if (typeof module !== 'undefined' && module.hasOwnProperty('exports')) { module.exports.enkf = enkf; }
+if (typeof module !== 'undefined' && module.hasOwnProperty('exports')) { module.exports = enkf; }
